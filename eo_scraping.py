@@ -1,6 +1,8 @@
 import json
-import util
+from datetime import datetime
+from xml.etree.ElementTree import Element, SubElement
 from bs4 import BeautifulSoup
+import util
 
 def parse_packlist_pack(obj):
 	x = util.extract_str
@@ -53,16 +55,53 @@ def get_pack(id_):
 	
 	return [parse_song_row(s) for s in song_row_iterator]
 
-def get_chartkey(chartid):
-	html = util.get(f"song/view/{chartid}").text
+# Finds the chartkey of a given id by downloading the song's html page
+# and extracting the chartkey from there.
+def get_chartkey(songid):
+	html = util.get(f"song/view/{songid}").text
 	return util.extract_str(html, '"data":{"chartkey": "', '"')
 
-def get_goals(userid):
-	params = {
-		"start": 0,
-		"length": -1,
-		"userid": userid
+# Parse EO-format goal json
+def parse_goal(goal):
+	x = util.extract_str
+	return {
+		"songname": x(goal["songname"], '">', "</a>"),
+		"songid": int(x(goal["songname"], "view/", '"')),
+		"difficulty": float(x(goal["difficulty"], ">", "<")),
+		"rate": float(goal["rate"]),
+		"percent": float(goal["wife"][:-1]),
+		"time_assigned": datetime.fromisoformat(goal["timeAssigned"]),
+		"time_achieved": None if goal["timeAchieved"] == "Not yet achieved"
+				else datetime.fromisoformat(goal["timeAchieved"])
 	}
-	r = util.post("user/getGoals", params=params)
-	goals = json.loads(r.content)
-	return goals
+
+def get_goals(userid):
+	r = util.post("user/getGoals", data={"userid": userid})
+	goals_json = json.loads(r.content)["data"]
+	return [parse_goal(goal) for goal in goals_json]
+
+# Convert a list of goals into the XML format that's used in the
+# Etterna.xml. Written for mondelointain cuz he lost his goals but they
+# were still on EO
+def goals_to_xml(goals):
+	root = Element("ScoreGoals")
+
+	for goal in goals:
+		# Not sure if this is correct. *Chart* key is derived from
+		# *song* id?
+		chartkey = get_chartkey(goal["songid"])
+		chart_goals_elem = root.find(f'.//GoalsForChart[@Key="{chartkey}"]')
+		
+		if chart_goals_elem is None:
+			chart_goals_elem = SubElement(root, "GoalsForChart")
+			chart_goals_elem.set("Key", chartkey)
+		
+		goal_elem = SubElement(chart_goals_elem, "ScoreGoal")
+		SubElement(goal_elem, "Priority").text = "1"
+		SubElement(goal_elem, "Comment").text = ""
+		SubElement(goal_elem, "Rate").text = str(goal["rate"])
+		SubElement(goal_elem, "Percent").text = str(goal["percent"])
+		SubElement(goal_elem, "TimeAssigned").text = util.format_datetime(goal["time_assigned"])
+	
+	return root
+

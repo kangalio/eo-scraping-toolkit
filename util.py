@@ -2,8 +2,7 @@ import requests, time
 from joblib import Memory
 from datetime import datetime, timedelta
 
-#REQUEST_WAIT_TIME = timedelta(seconds=10)
-REQUEST_WAIT_TIME = timedelta(seconds=2)
+REQUEST_WAIT_TIME = timedelta(seconds=10)
 
 memory = Memory("requests_cache", verbose=0)
 
@@ -30,6 +29,12 @@ def parse_filesize(string):
 	if string == "0 B": return 0
 	multiplier = 1000 ** (MULTIPLIERS.index(string[-2:].lower()) - 2)
 	return float(string[:-2]) * multiplier
+
+def format_datetime(date):
+	return datetime.strftime(date, "%Y-%m-%d %H:%M:%S")
+
+def parse_datetime(date_str):
+	return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
 
 @memory.cache
 def post(url, *args, **kw_args):
