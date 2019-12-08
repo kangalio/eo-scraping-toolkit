@@ -1,13 +1,35 @@
 import json
 from datetime import datetime
 from xml.etree.ElementTree import Element, SubElement
-from bs4 import BeautifulSoup
 import util
 from util import extract_str, Grade
 
 skillset_names = ["Stream", "Jumpstream", "Handstream", "Stamina", "JackSpeed", "Chordjack", "Technical"]
 judgement_names = ["Marvelous", "Perfect", "Great", "Good", "Bad", "Miss"]
 judgement_ids = ["W1", "W2", "W3", "W4", "W5", "Miss"]
+
+def get_playlists(username):
+	html = util.parse_html(util.get(f"user/{username}").content)
+	playlists = []
+	for panel in html.select("#playlists>.panel"):
+		title = panel.find(class_="panel-title").string.strip()
+		
+		entries = []
+		for row in panel.find("tbody").find_all("tr"):
+			cells = row.find_all("td")
+			entries.append({
+				"songname": cells[0].find("a").string.strip(),
+				"songid": int(row.find("a")["href"][36:]),
+				"rate": float(cells[1].string.strip()),
+				"difficulty":float(cells[2].string.strip()),
+			})
+		
+		playlists.append({
+			"title": title,
+			"entries": entries,
+		})
+	
+	return playlists	
 
 def parse_packlist_pack(obj):
 	x = util.extract_str
@@ -54,7 +76,7 @@ def parse_song_row(song):
 	}
 
 def get_pack(id_):
-	soup = BeautifulSoup(util.get(f"pack/{id_}").content, features="html5lib")
+	soup = util.parse_html(util.get(f"pack/{id_}").content)
 	
 	song_row_iterator = soup.find("tbody").find_all("tr")[1:]
 	

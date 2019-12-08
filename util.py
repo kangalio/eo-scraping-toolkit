@@ -3,6 +3,7 @@ from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement
 from datetime import datetime, timedelta
 from enum import Enum
+from bs4 import BeautifulSoup
 from joblib import Memory
 
 REQUEST_WAIT_TIME = timedelta(seconds=1)
@@ -38,6 +39,9 @@ class Grade(Enum):
 			return None
 		else:
 			return Grade(grade_number)
+
+def parse_html(code):
+	return BeautifulSoup(code, features="html5lib")
 
 def add_xml_text_elements(parent, subelements):
 	for tag, content in subelements.items():
