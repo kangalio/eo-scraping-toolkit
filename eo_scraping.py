@@ -96,7 +96,7 @@ def parse_score(score):
 	
 	return {
 		"judgements": judgement_amounts,
-		"wifescore": float(extract_str(score["wifescore"], "'>", "%")),
+		"wifescore": float(extract_str(score["wifescore"], "'>", "%")) / 100,
 		"songid": int(extract_str(score["songname"], "view/", '"')),
 		"songname": extract_str(score["songname"], ">", "<"),
 		"skillsets": skillsets,
@@ -104,7 +104,7 @@ def parse_score(score):
 		"rate": float(score["user_chart_rate_rate"]),
 		"nerf": float(score["Nerf"]),
 		"datetime": score["datetime"],
-		"nocc": score["nocc"] == "On",
+		"chordcohesion": score["nocc"] == "On",
 		"scorekey": score["scorekey"],
 	}
 
@@ -165,7 +165,7 @@ def scores_to_xml(scores):
 		score_elem = SubElement(scoresat_elem, "Score")
 		score_elem.set("Key", score["scorekey"])
 		
-		grade = Grade.from_percent(score["wifescore"])
+		grade = Grade.from_wifescore(score["wifescore"])
 		grade_str = grade.as_xml_name()
 		best_grade = Grade.from_xml_name(scoresat_elem.get("BestGrade"))
 		if grade.value > best_grade.value:
@@ -183,8 +183,8 @@ def scores_to_xml(scores):
 			"WifePoints": wifepoints,
 			"SSRNormPercent": score["wifescore"],
 			"JudgeScale": 1, # J4 cuz EO normalizes everything to J4
-			"NoChordCohestion": int(score["nocc"]),
-			"EtternaValid": int(score["nocc"]),
+			"NoChordCohestion": int(not score["chordcohesion"]),
+			"EtternaValid": int(not score["chordcohesion"]),
 			# unknown: SurviveSeconds
 			# STUB: MaxCombo
 			# STUB: Modifiers

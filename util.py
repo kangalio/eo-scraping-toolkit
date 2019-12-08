@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from joblib import Memory
 
-REQUEST_WAIT_TIME = timedelta(seconds=3)
+REQUEST_WAIT_TIME = timedelta(seconds=1)
 
 memory = Memory("requests_cache", verbose=0)
 
@@ -20,7 +20,7 @@ class Grade(Enum):
 	AAA = 6
 	AAAA = 7
 	
-	def from_percent(percent):
+	def from_wifescore(percent):
 		if percent > 0.9997: return Grade.AAAA
 		elif percent > 0.9975: return Grade.AAA
 		elif percent > 0.93: return Grade.AA
@@ -55,7 +55,7 @@ def rate_limit():
 	delta = datetime.now() - last_request_time
 	if delta < REQUEST_WAIT_TIME:
 		wait_seconds = (REQUEST_WAIT_TIME - delta).total_seconds()
-		info_text = f"rate limiting :) please wait {wait_seconds:.2f}s..."
+		info_text = f"[rate limiting :) please wait {wait_seconds:.2f}s]"
 		sys.stdout.write(info_text)
 		sys.stdout.flush()
 		time.sleep(wait_seconds)
