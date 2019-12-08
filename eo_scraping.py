@@ -21,7 +21,7 @@ def get_playlists(username):
 				"songname": cells[0].find("a").string.strip(),
 				"songid": int(row.find("a")["href"][36:]),
 				"rate": float(cells[1].string.strip()),
-				"difficulty":float(cells[2].string.strip()),
+				"difficulty": float(cells[2].string.strip()),
 			})
 		
 		playlists.append({
@@ -30,6 +30,23 @@ def get_playlists(username):
 		})
 	
 	return playlists	
+
+def get_favorites(username):
+	html = util.parse_html(util.get(f"user/{username}").content)
+	
+	favorites = []
+	for div in html.select("#favorites>.favorite"):
+		stepper = div.find("span").get_text()
+		if stepper == "": stepper = None
+		
+		favorites.append({
+			"songname": div.find("a").string.strip(),
+			"songid": int(div.find("a")["href"][36:]),
+			"artist": div.find(class_="favorite-artist").string.strip(),
+			"stepper": stepper,
+		})
+	
+	return favorites
 
 def parse_packlist_pack(obj):
 	x = util.extract_str
