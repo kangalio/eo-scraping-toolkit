@@ -1,5 +1,8 @@
 import json
+from xml.etree import ElementTree
 import eo_scraping, util
 from eo_scraping import *
 
-print(goals_to_xml(get_goals(11968)))
+scores = get_scores(4877)
+scores_elem = scores_to_xml(scores[:50])
+print(util.xml_format(scores_elem))
