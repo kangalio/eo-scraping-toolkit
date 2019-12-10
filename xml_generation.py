@@ -128,15 +128,33 @@ def scores_to_xml(scores, userid):
 	
 	return root
 
-def gen_xml(userid, score_limit=None):
+def gen_general_data(username, scores):
+	last_score = max(score, key=lambda score: score["datetime"])
+	
+	root = Element("GeneralData")
+	util.add_xml_text_elements(root, {
+		"DisplayName": username,
+		# Man there's a bunch of stuff in GeneralData but almost every-
+		# thing is not accessible with EO data. Hopefully Etterna/SM
+		# keep the ability to make up for missingn fields in the XML
+	})
+	
+	return root
+
+def gen_xml(username, userid, score_limit=None):
 	root = Element("Stats")
 	
 	goals = eo_scraping.get_goals(userid)
-	root.append(goals_to_xml(goals))
+	goals_xml = goals_to_xml(goals)
 	
 	scores = eo_scraping.get_scores(userid)
 	if score_limit: scores = scores[:score_limit]
-	root.append(scores_to_xml(scores, userid))
+	scores_xml = scores_to_xml(scores, userid)
 	
-	# ~ return ElementTree(root)
+	general_data_xml = gen_general_data(username, scores)
+	
+	root.append(general_data_xml)
+	# ~ root.append(goals_xml)
+	# ~ root.append(scores_xml)
+	
 	return root
