@@ -6,6 +6,9 @@ from enum import Enum
 from bs4 import BeautifulSoup
 from joblib import Memory
 
+SKILLSETS = ["Stream", "Jumpstream", "Handstream", "Stamina", "JackSpeed", "Chordjack", "Technical"]
+JUDGEMENTS = ["Marvelous", "Perfect", "Great", "Good", "Bad", "Miss"]
+
 REQUEST_WAIT_TIME = timedelta(seconds=1)
 
 memory = Memory("requests_cache", verbose=0)
@@ -47,10 +50,25 @@ def add_xml_text_elements(parent, subelements):
 	for tag, content in subelements.items():
 		SubElement(parent, tag).text = str(content)
 
+# Source: http://effbot.org/zone/element-lib.htm#prettyprint
+def indent(elem, level=0):
+    i = "\n" + level*" "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + " "
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            indent(elem, level+1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
+
 def xml_format(element):
-	bytestring = ElementTree.tostring(element)
-	string = bytestring.decode("UTF-8").replace("><", ">\n<")
-	return string
+	indent(element)
+	return ElementTree.tostring(element).decode("UTF-8")
 
 last_request_time = datetime.fromisoformat("1970-01-01")
 def rate_limit():
