@@ -3,6 +3,27 @@ from datetime import datetime
 import util
 from util import extract_str, Grade, JUDGEMENTS, SKILLSETS
 
+def get_score(scoreid, userid):
+	r = util.get(f"score/view/{scoreid}{userid}")
+	if r.status_code != 200: return None
+	html = util.parse_html(r.content)
+	
+	data_div = html.find(id="songtitledatak")
+	h5s = data_div.find_all("h5")
+	
+	judge = None
+	if len(h5s) > 4:
+		judge_str = h5s[4].string.strip()[6:]
+		if judge_str != "":
+			judge = int(judge_str)
+	
+	return {
+		"packname": h5s[0].find("a").get_text().strip(),
+		"datetime": h5s[2].contents[-1].string.strip(),
+		"modifiers": h5s[3].contents[-1].string.strip(),
+		"judge": judge,
+	}
+
 def get_playlists(username):
 	html = util.parse_html(util.get(f"user/{username}").content)
 	playlists = []

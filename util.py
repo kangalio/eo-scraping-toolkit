@@ -48,7 +48,13 @@ def parse_html(code):
 
 def add_xml_text_elements(parent, subelements):
 	for tag, content in subelements.items():
-		SubElement(parent, tag).text = str(content)
+		if content is None:
+			continue
+		elif isinstance(content, float):
+			text = f"{content:.8g}" # Hide floating point errors
+		else:
+			text = str(content)
+		SubElement(parent, tag).text = text
 
 # Source: http://effbot.org/zone/element-lib.htm#prettyprint
 def indent(elem, level=0):

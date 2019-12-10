@@ -30,7 +30,7 @@ def goals_to_xml(goals):
 	
 	return root
 
-def scores_to_xml(scores):
+def scores_to_xml(scores, userid):
 	root = Element("PlayerScores")
 	
 	for score in scores:
@@ -39,6 +39,7 @@ def scores_to_xml(scores):
 		# development we simply assume the first diff
 		chartkey = chartkeys[0]
 		
+		# Get existing or create new Chart element
 		chart_elem = root.find(f'Chart[@Key="{chartkey}"]')
 		if chart_elem is None:
 			chart_elem = SubElement(root, "Chart")
@@ -49,6 +50,7 @@ def scores_to_xml(scores):
 		
 		rate_str = f"{score['rate']:.3f}"
 		
+		# Get existing or create new ScoresAt element
 		scoresat_elem = chart_elem.find(f'ScoresAt[@Rate="{rate_str}"]')
 		if scoresat_elem is None:
 			scoresat_elem = SubElement(chart_elem, "ScoresAt")
@@ -56,19 +58,25 @@ def scores_to_xml(scores):
 			scoresat_elem.set("PBKey", "")
 			scoresat_elem.set("Rate", rate_str)
 		
+		# Create new Score element
 		score_elem = SubElement(scoresat_elem, "Score")
 		score_elem.set("Key", score["scorekey"])
 		
 		grade = Grade.from_wifescore(score["wifescore"])
 		grade_str = grade.as_xml_name()
-		best_grade = Grade.from_xml_name(scoresat_elem.get("BestGrade"))
-		if grade.value > best_grade.value:
-			scoresat_elem.set("BestGrade", grade_str)
 		
+		# Wifepoints = Wifescore * NumNotes
 		wifepoints = score["wifescore"] * sum(score["judgements"])
 		
-		dtime = datetime.fromisoformat(score["datetime"])
-		datetime_str = util.format_datetime(dtime)
+		score_info = eo_scraping.get_score(score["scorekey"], userid)
+		if score_info is not None:
+			chart_elem.set("Pack", score_info["packname"])
+			datetime_str = score_info["datetime"]
+		else: # If score page 404'd
+			# Fallback to the score-provided datetime without hours,
+			# minutes or seconds
+			dtime = datetime.fromisoformat(score["datetime"])
+			datetime_str = util.format_datetime(dtime)
 		
 		util.add_xml_text_elements(score_elem, {
 			"SSRCalcVersion": 263,
@@ -81,10 +89,10 @@ def scores_to_xml(scores):
 			"EtternaValid": int(not score["chordcohesion"]),
 			# unknown: SurviveSeconds
 			# STUB: MaxCombo
-			# STUB: Modifiers
+			"Modifiers": score_info and score_info["modifiers"],
 			# unknown: MachineGuid
 			"DateTime": datetime_str,
-			# STUB: TopScore
+			# TopScore is added later
 		})
 		
 		judgements = {}
@@ -107,16 +115,28 @@ def scores_to_xml(scores):
 		server_elem = SubElement(servs_elem, "server")
 		server_elem.text = "https://api.etternaonline.com/v2"
 	
+	for scores_at_elem in root.iter("ScoresAt"):
+		scores = list(scores_at_elem.iter("Score"))
+		best_score = max(scores, key=lambda s: s.get("SSRNormPercent"))
+		
+		for score in scores:
+			top_score_elem = SubElement(score, "TopScore")
+			top_score_elem.text = "1" if (score == best_score) else "0"
+		
+		scores_at_elem.set("BestGrade", best_score.findtext("Grade"))
+		scores_at_elem.set("PBKey", best_score.get("Key"))
+	
 	return root
 
-def gen_xml(userid):
+def gen_xml(userid, score_limit=None):
 	root = Element("Stats")
 	
 	goals = eo_scraping.get_goals(userid)
 	root.append(goals_to_xml(goals))
 	
-	scores = eo_scraping.get_scores(userid)[:80]
-	root.append(scores_to_xml(scores))
+	scores = eo_scraping.get_scores(userid)
+	if score_limit: scores = scores[:score_limit]
+	root.append(scores_to_xml(scores, userid))
 	
 	# ~ return ElementTree(root)
 	return root
