@@ -41,7 +41,7 @@ def get_playlists(username):
 			})
 		
 		playlists.append({
-			"title": title,
+			"name": title,
 			"entries": entries,
 		})
 	
@@ -122,6 +122,17 @@ def get_chartkeys(songid):
 	chartkeys = util.extract_strs(html, '"data":{"chartkey": "', '"')
 	chartkeys = list(dict.fromkeys(chartkeys)) # Remove duplicates
 	return chartkeys
+
+def get_packs(songid):
+	html = util.parse_html(util.get(f"song/view/{songid}").content)
+	
+	packs = []
+	for pack_link in html.find(class_="in-packs-test").find_all("a"):
+		packs.append({
+			"packid": pack_link["href"],
+			"packname": pack_link.get_text().strip(),
+		})
+	return packs
 
 # Parse EO-format goal json
 def parse_goal(goal):

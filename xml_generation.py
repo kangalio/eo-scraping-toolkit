@@ -30,6 +30,29 @@ def goals_to_xml(goals):
 	
 	return root
 
+def playlists_to_xml(playlists):
+	root = Element("Playlists")
+	
+	for playlist in playlists:
+		playlist_elem = SubElement(root, "Playlist")
+		playlist_elem.set("Name", playlist["name"])
+		
+		chartlist_elem = SubElement(playlist_elem, "Chartlist")
+		for chart in playlist["entries"]:
+			chart_elem = SubElement(chartlist_elem, "Chart")
+			
+			# We don't know if it's index 0, but that's the issue; we
+			# don't know.
+			chartkey = eo_scraping.get_chartkeys(chart["songid"])[0]
+			packname = eo_scraping.get_packs(chart["songid"])[0]["packname"]
+			
+			chart_elem.set("Key", chartkey)
+			chart_elem.set("Pack", packname)
+			chart_elem.set("Rate", str(chart["rate"]))
+			chart_elem.set("Song", chart["songname"])
+	
+	return root
+
 def scores_to_xml(scores, userid):
 	root = Element("PlayerScores")
 	
@@ -129,7 +152,7 @@ def scores_to_xml(scores, userid):
 	return root
 
 def gen_general_data(username, scores):
-	last_score = max(score, key=lambda score: score["datetime"])
+	last_score = max(scores, key=lambda score: score["datetime"])
 	
 	root = Element("GeneralData")
 	util.add_xml_text_elements(root, {
@@ -144,6 +167,9 @@ def gen_general_data(username, scores):
 def gen_xml(username, userid, score_limit=None):
 	root = Element("Stats")
 	
+	playlists = eo_scraping.get_playlists(username)
+	playlists_xml = playlists_to_xml(playlists)
+	
 	goals = eo_scraping.get_goals(userid)
 	goals_xml = goals_to_xml(goals)
 	
@@ -154,7 +180,8 @@ def gen_xml(username, userid, score_limit=None):
 	general_data_xml = gen_general_data(username, scores)
 	
 	root.append(general_data_xml)
-	# ~ root.append(goals_xml)
-	# ~ root.append(scores_xml)
+	root.append(playlists_xml)
+	root.append(goals_xml)
+	root.append(scores_xml)
 	
 	return root
