@@ -51,14 +51,14 @@ def get_favorites(username):
 	html = util.parse_html(util.get(f"user/{username}").content)
 	
 	favorites = []
-	for div in html.select("#favorites>.favorite"):
-		stepper = div.find("span").get_text()
+	for favorited in html.select("#favorites>.favorite"):
+		stepper = favorited.find("span").get_text()
 		if stepper == "": stepper = None
 		
 		favorites.append({
-			"songname": div.find("a").string.strip(),
-			"songid": int(div.find("a")["href"][36:]),
-			"artist": div.find(class_="favorite-artist").string.strip(),
+			"songname": favorited.find("a").string.strip(),
+			"songid": int(favorited.find("a")["href"][36:]),
+			"artist": favorited.find(class_="favorite-artist").string.strip(),
 			"stepper": stepper,
 		})
 	

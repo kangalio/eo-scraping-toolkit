@@ -151,6 +151,16 @@ def scores_to_xml(scores, userid):
 	
 	return root
 
+def favorites_to_xml(favorites):
+	root = Element("Favorites")
+	
+	for favorited in favorites:
+		# We don't know which chart was favorited, so we assume index 0.
+		chartkey = eo_scraping.get_chartkeys(favorited["songid"])[0]
+		SubElement(root, chartkey)
+	
+	return root
+
 def gen_general_data(username, scores):
 	last_score = max(scores, key=lambda score: score["datetime"])
 	
@@ -167,6 +177,9 @@ def gen_general_data(username, scores):
 def gen_xml(username, userid, score_limit=None):
 	root = Element("Stats")
 	
+	favorites = eo_scraping.get_favorites(username)
+	favorites_xml = favorites_to_xml(favorites)
+	
 	playlists = eo_scraping.get_playlists(username)
 	playlists_xml = playlists_to_xml(playlists)
 	
@@ -180,6 +193,7 @@ def gen_xml(username, userid, score_limit=None):
 	general_data_xml = gen_general_data(username, scores)
 	
 	root.append(general_data_xml)
+	root.append(favorites_xml)
 	root.append(playlists_xml)
 	root.append(goals_xml)
 	root.append(scores_xml)
