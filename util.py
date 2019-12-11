@@ -51,7 +51,8 @@ def add_xml_text_elements(parent, subelements):
 		if content is None:
 			continue
 		elif isinstance(content, float):
-			text = f"{content:.8g}" # Hide floating point errors
+			# Round to hide floating point errors
+			text = f"{content:.8g}"
 		else:
 			text = str(content)
 		SubElement(parent, tag).text = text
@@ -83,14 +84,14 @@ def rate_limit():
 	delta = datetime.now() - last_request_time
 	if delta < REQUEST_WAIT_TIME:
 		wait_seconds = (REQUEST_WAIT_TIME - delta).total_seconds()
-		info_text = f"[rate limiting :) please wait {wait_seconds:.2f}s]"
-		sys.stdout.write(info_text)
-		sys.stdout.flush()
+		# ~ info_text = f"[rate limiting :) please wait {wait_seconds:.2f}s]"
+		# ~ sys.stdout.write(info_text)
+		# ~ sys.stdout.flush()
 		time.sleep(wait_seconds)
-		sys.stdout.write("\b" * len(info_text))
-		sys.stdout.write(" " * len(info_text))
-		sys.stdout.write("\b" * len(info_text))
-		sys.stdout.flush()
+		# ~ sys.stdout.write("\b" * len(info_text))
+		# ~ sys.stdout.write(" " * len(info_text))
+		# ~ sys.stdout.write("\b" * len(info_text))
+		# ~ sys.stdout.flush()
 	last_request_time = datetime.now()
 
 # Extracts a substring based on prefix and postfix. Both `before` and
@@ -130,13 +131,17 @@ def parse_datetime(date_str):
 	return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
 
 @memory.cache
-def post(url, *args, **kw_args):
+def post(url, data):
 	rate_limit()
 	url = "https://etternaonline.com/" + url
-	return requests.post(url, *args, **kw_args)
+	response = requests.post(url, data=data)
+	response.raise_for_status()
+	return response
 
 @memory.cache
-def get(url, *args, **kw_args):
+def get(url):
 	rate_limit()
 	url = "https://etternaonline.com/" + url
-	return requests.get(url, *args, **kw_args)
+	response = requests.get(url)
+	response.raise_for_status()
+	return response

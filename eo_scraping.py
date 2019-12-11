@@ -3,9 +3,13 @@ from datetime import datetime
 import util
 from util import extract_str, Grade, JUDGEMENTS, SKILLSETS
 
+def get_userid(username):
+	user_page = util.get(f"user/{username}").text
+	userid = extract_str(user_page, "'userid': '", "'")
+	return int(userid)
+
 def get_score(scoreid, userid):
 	r = util.get(f"score/view/{scoreid}{userid}")
-	if r.status_code != 200: return None
 	html = util.parse_html(r.content)
 	
 	data_div = html.find(id="songtitledatak")

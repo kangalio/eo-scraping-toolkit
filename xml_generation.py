@@ -6,6 +6,10 @@ from util import Grade
 
 JUDGEMENT_IDS = ["W1", "W2", "W3", "W4", "W5", "Miss"]
 
+verbose = False
+def info(msg=""):
+	if verbose: print(msg)
+
 # Convert a list of goals into the XML format that's used in the
 # Etterna.xml. Written for mondelointain cuz he lost his goals but they
 # were still on EO
@@ -56,7 +60,10 @@ def playlists_to_xml(playlists):
 def scores_to_xml(scores, userid):
 	root = Element("PlayerScores")
 	
-	for score in scores:
+	for score_i, score in enumerate(scores):
+		if score["wifescore"] == 0:
+			continue # Skip invalid scores
+		
 		chartkeys = eo_scraping.get_chartkeys(score["songid"])
 		# We don't know which diff/chart it is cuz EO is weird. For
 		# development we simply assume the first diff
@@ -88,8 +95,8 @@ def scores_to_xml(scores, userid):
 		grade = Grade.from_wifescore(score["wifescore"])
 		grade_str = grade.as_xml_name()
 		
-		# Wifepoints = Wifescore * NumNotes
-		wifepoints = score["wifescore"] * sum(score["judgements"])
+		# Wifepoints = Wifescore * NumNotes * 2
+		wifepoints = score["wifescore"] * sum(score["judgements"]) * 2
 		
 		score_info = eo_scraping.get_score(score["scorekey"], userid)
 		if score_info is not None:
@@ -100,6 +107,15 @@ def scores_to_xml(scores, userid):
 			# minutes or seconds
 			dtime = datetime.fromisoformat(score["datetime"])
 			datetime_str = util.format_datetime(dtime)
+		
+		info()
+		info(f"""
+[{score_i+1}/{len(scores)}]
+Song: {score["songname"]}
+Score: {round(score["wifescore"]*100, 2)}% ({grade.name})
+Score rating: {max(score["skillsets"]):}
+Date: {datetime_str}
+""".strip())
 		
 		util.add_xml_text_elements(score_elem, {
 			"SSRCalcVersion": 263,
@@ -124,15 +140,16 @@ def scores_to_xml(scores, userid):
 		tap_note_scores_elem = SubElement(score_elem, "TapNoteScores")
 		util.add_xml_text_elements(tap_note_scores_elem, judgements)
 		
-		# STUB: HoldNoteScores
+		# missing: HoldNoteScores
 		
 		skillset_ssrs = {}
 		for i in range(7):
 			skillset_ssrs[util.SKILLSETS[i]] = score["skillsets"][i]
+		skillset_ssrs["Overall"] = max(score["skillsets"])
 		skillset_ssrs_elem = SubElement(score_elem, "SkillsetSSRs")
 		util.add_xml_text_elements(skillset_ssrs_elem, skillset_ssrs)
 			
-		# STUB: ValidationKeys
+		# missing: ValidationKeys
 		
 		servs_elem = SubElement(score_elem, "Servs")
 		server_elem = SubElement(servs_elem, "server")
@@ -140,7 +157,7 @@ def scores_to_xml(scores, userid):
 	
 	for scores_at_elem in root.iter("ScoresAt"):
 		scores = list(scores_at_elem.iter("Score"))
-		best_score = max(scores, key=lambda s: s.get("SSRNormPercent"))
+		best_score = max(scores, key=lambda s: float(s.findtext("SSRNormPercent")))
 		
 		for score in scores:
 			top_score_elem = SubElement(score, "TopScore")
@@ -169,7 +186,7 @@ def gen_general_data(username, scores):
 		"DisplayName": username,
 		# Man there's a bunch of stuff in GeneralData but almost every-
 		# thing is not accessible with EO data. Hopefully Etterna/SM
-		# keep the ability to make up for missingn fields in the XML
+		# can make up for all the missing fields in the XML
 	})
 	
 	return root
@@ -177,17 +194,33 @@ def gen_general_data(username, scores):
 def gen_xml(username, userid, score_limit=None):
 	root = Element("Stats")
 	
+	info()
+	info("Downloading favorite charts...")
 	favorites = eo_scraping.get_favorites(username)
+	info(f"Converting {len(favorites)} favorited charts to XML format...")
 	favorites_xml = favorites_to_xml(favorites)
 	
+	info()
+	info("Downloading playlists...")
 	playlists = eo_scraping.get_playlists(username)
+	
+	for playlist in playlists:
+		info(f"- {playlist['name']}: {len(playlist['entries'])} charts")
+	
+	info(f"Converting {len(playlists)} playlists to XML format...")
 	playlists_xml = playlists_to_xml(playlists)
 	
+	info()
+	info("Downloading goals...")
 	goals = eo_scraping.get_goals(userid)
+	info(f"Converting {len(goals)} goals to XML format...")
 	goals_xml = goals_to_xml(goals)
 	
+	info()
+	info("Downloading scores...")
 	scores = eo_scraping.get_scores(userid)
 	if score_limit: scores = scores[:score_limit]
+	info(f"Converting {len(scores)} scores to XML format...")
 	scores_xml = scores_to_xml(scores, userid)
 	
 	general_data_xml = gen_general_data(username, scores)
