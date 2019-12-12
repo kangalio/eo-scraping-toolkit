@@ -57,6 +57,29 @@ def playlists_to_xml(playlists):
 	
 	return root
 
+def handle_hit_data(data):
+	hitlen = len(data[0])
+	
+	max_combo = 0
+	combo = 0
+	for hit in data:
+		if hitlen == 5:
+			time, offset_ms, column, _, row = hit
+			# ~ offset = offset_ms / 1000
+			# ~ print(f"{row} {offset:.6f} {column}")
+		else:
+			time, offset_ms, column, _ = hit
+		
+		if offset_ms <= 90:
+			combo += 1
+		else:
+			if combo > max_combo: max_combo = combo
+			combo = 0
+	
+	return {
+		"maxcombo": max_combo,
+	}
+
 def scores_to_xml(scores, userid):
 	root = Element("PlayerScores")
 	
@@ -98,10 +121,16 @@ def scores_to_xml(scores, userid):
 		# Wifepoints = Wifescore * NumNotes * 2
 		wifepoints = score["wifescore"] * sum(score["judgements"]) * 2
 		
+		max_combo = None
+		
 		score_info = eo_scraping.get_score(score["scorekey"], userid)
 		if score_info is not None:
 			chart_elem.set("Pack", score_info["packname"])
 			datetime_str = score_info["datetime"]
+			
+			if score_info["hitdata"] is not None:
+				hit_analysis = handle_hit_data(score_info["hitdata"])
+				max_combo = hit_analysis["maxcombo"]
 		else: # If score page 404'd
 			# Fallback to the score-provided datetime without hours,
 			# minutes or seconds
@@ -109,13 +138,11 @@ def scores_to_xml(scores, userid):
 			datetime_str = util.format_datetime(dtime)
 		
 		info()
-		info(f"""
-[{score_i+1}/{len(scores)}]
-Song: {score["songname"]}
-Score: {round(score["wifescore"]*100, 2)}% ({grade.name})
-Score rating: {max(score["skillsets"]):}
-Date: {datetime_str}
-""".strip())
+		info(f'[{score_i+1}/{len(scores)}]')
+		info(f'Song: {score["songname"]}')
+		info(f'Score: {round(score["wifescore"]*100, 2)}% ({grade.name})')
+		info(f'Score rating: {max(score["skillsets"])}')
+		info(f'Date: {datetime_str}')
 		
 		util.add_xml_text_elements(score_elem, {
 			"SSRCalcVersion": 263,
@@ -127,7 +154,7 @@ Date: {datetime_str}
 			"NoChordCohestion": int(not score["chordcohesion"]),
 			"EtternaValid": int(not score["chordcohesion"]),
 			# unknown: SurviveSeconds
-			# STUB: MaxCombo
+			"MaxCombo": max_combo,
 			"Modifiers": score_info and score_info["modifiers"],
 			# unknown: MachineGuid
 			"DateTime": datetime_str,

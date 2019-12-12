@@ -1,7 +1,7 @@
-import json
+import json, ast
 from datetime import datetime
 import util
-from util import extract_str, Grade, JUDGEMENTS, SKILLSETS
+from util import extract_str, extract_strs, Grade, JUDGEMENTS, SKILLSETS
 
 def get_userid(username):
 	user_page = util.get(f"user/{username}").text
@@ -9,8 +9,9 @@ def get_userid(username):
 	return int(userid)
 
 def get_score(scoreid, userid):
-	r = util.get(f"score/view/{scoreid}{userid}")
-	html = util.parse_html(r.content)
+	print(f"{scoreid}{userid}")
+	score_page = util.get(f"score/view/{scoreid}{userid}").text
+	html = util.parse_html(score_page)
 	
 	data_div = html.find(id="songtitledatak")
 	h5s = data_div.find_all("h5")
@@ -21,11 +22,19 @@ def get_score(scoreid, userid):
 		if judge_str != "":
 			judge = int(judge_str)
 	
+	data_str = extract_str(score_page, "data: [[", "]]")
+	if data_str is None:
+		hit_data = None
+	else:
+		data_str = "[[" + data_str + "]]"
+		hit_data = ast.literal_eval(data_str)
+	
 	return {
 		"packname": h5s[0].find("a").get_text().strip(),
 		"datetime": h5s[2].contents[-1].string.strip(),
 		"modifiers": h5s[3].contents[-1].string.strip(),
 		"judge": judge,
+		"hitdata": hit_data,
 	}
 
 def get_playlists(username):

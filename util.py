@@ -97,8 +97,19 @@ def rate_limit():
 # Extracts a substring based on prefix and postfix. Both `before` and
 # `after` can be None
 def extract_str(string, before, after=None):
-	start = 0 if before is None else string.find(before) + len(before)
-	end = None if after is None else string.find(after, start)
+	if before is None:
+		start = 0
+	else:
+		before_index = string.find(before)
+		if before_index == -1: return None
+		start = before_index + len(before)
+	
+	if after is None:
+		end = None
+	else:
+		end = string.find(after, start)
+		if end == -1: end = None # Right behavior?
+	
 	return string[start:end]
 
 # Like extract_str, but it can find multiple. Returns a list
