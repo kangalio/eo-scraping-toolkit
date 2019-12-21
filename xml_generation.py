@@ -211,10 +211,15 @@ def gen_general_data(username, scores):
 	root = Element("GeneralData")
 	util.add_xml_text_elements(root, {
 		"DisplayName": username,
+		"LastPlayedDate": last_score["datetime"][:10]
 		# Man there's a bunch of stuff in GeneralData but almost every-
 		# thing is not accessible with EO data. Hopefully Etterna/SM
 		# can make up for all the missing fields in the XML
 	})
+	
+	default_modifiers = SubElement(root, "DefaultModifiers")
+	default_dance_modifiers = SubElement(default_modifiers, "dance")
+	default_dance_modifiers.text = last_score["modifiers"]
 	
 	return root
 
