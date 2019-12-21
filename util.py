@@ -142,7 +142,7 @@ def parse_datetime(date_str):
 	return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
 
 @memory.cache
-def post(url, data):
+def post_inner(url, data):
 	rate_limit()
 	url = "https://etternaonline.com/" + url
 	response = requests.post(url, data=data)
@@ -150,9 +150,12 @@ def post(url, data):
 	return response
 
 @memory.cache
-def get(url):
+def get_inner(url):
 	rate_limit()
 	url = "https://etternaonline.com/" + url
 	response = requests.get(url)
 	response.raise_for_status()
 	return response
+
+def get(url): return get_inner(url)
+def post(url, data): return post_inner(url, data)

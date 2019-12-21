@@ -84,13 +84,21 @@ def scores_to_xml(scores, userid):
 	root = Element("PlayerScores")
 	
 	for score_i, score in enumerate(scores):
-		if score["wifescore"] == 0:
+		if score["nerf"] == 0:
 			continue # Skip invalid scores
 		
-		chartkeys = eo_scraping.get_chartkeys(score["songid"])
-		# We don't know which diff/chart it is cuz EO is weird. For
-		# development we simply assume the first diff
-		chartkey = chartkeys[0]
+		info()
+		
+		songid = score["songid"]
+		scorekey = score["scorekey"]
+		try:
+			chartkey = eo_scraping.find_matching_diffs(songid, [scorekey])[scorekey]
+		except Exception as e:
+			# Correct chartkey couldn't be determined; something's wrong
+			# with this score (Probably an invalid score that was
+			# removed on score page, but is still visible on user page)
+			info(e)
+			continue
 		
 		# Get existing or create new Chart element
 		chart_elem = root.find(f'Chart[@Key="{chartkey}"]')
@@ -137,7 +145,6 @@ def scores_to_xml(scores, userid):
 			dtime = datetime.fromisoformat(score["datetime"])
 			datetime_str = util.format_datetime(dtime)
 		
-		info()
 		info(f'[{score_i+1}/{len(scores)}]')
 		info(f'Song: {score["songname"]}')
 		info(f'Score: {round(score["wifescore"]*100, 2)}% ({grade.name})')
@@ -182,6 +189,10 @@ def scores_to_xml(scores, userid):
 		server_elem = SubElement(servs_elem, "server")
 		server_elem.text = "https://api.etternaonline.com/v2"
 	
+	# Assign chartkeys
+	
+	
+	# Find and set PBs
 	for scores_at_elem in root.iter("ScoresAt"):
 		scores = list(scores_at_elem.iter("Score"))
 		best_score = max(scores, key=lambda s: float(s.findtext("SSRNormPercent")))
@@ -205,8 +216,9 @@ def favorites_to_xml(favorites):
 	
 	return root
 
-def gen_general_data(username, scores):
+def gen_general_data(username, userid, scores):
 	last_score = max(scores, key=lambda score: score["datetime"])
+	last_score_info = eo_scraping.get_score(last_score["scorekey"], userid)
 	
 	root = Element("GeneralData")
 	util.add_xml_text_elements(root, {
@@ -219,14 +231,13 @@ def gen_general_data(username, scores):
 	
 	default_modifiers = SubElement(root, "DefaultModifiers")
 	default_dance_modifiers = SubElement(default_modifiers, "dance")
-	default_dance_modifiers.text = last_score["modifiers"]
+	default_dance_modifiers.text = last_score_info["modifiers"]
 	
 	return root
 
 def gen_xml(username, userid, score_limit=None):
 	root = Element("Stats")
 	
-	info()
 	info("Downloading favorite charts...")
 	favorites = eo_scraping.get_favorites(username)
 	info(f"Converting {len(favorites)} favorited charts to XML format...")
@@ -255,7 +266,7 @@ def gen_xml(username, userid, score_limit=None):
 	info(f"Converting {len(scores)} scores to XML format...")
 	scores_xml = scores_to_xml(scores, userid)
 	
-	general_data_xml = gen_general_data(username, scores)
+	general_data_xml = gen_general_data(username, userid, scores)
 	
 	root.append(general_data_xml)
 	root.append(favorites_xml)

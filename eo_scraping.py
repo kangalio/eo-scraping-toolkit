@@ -9,7 +9,6 @@ def get_userid(username):
 	return int(userid)
 
 def get_score(scoreid, userid):
-	print(f"{scoreid}{userid}")
 	score_page = util.get(f"score/view/{scoreid}{userid}").text
 	html = util.parse_html(score_page)
 	
@@ -121,12 +120,44 @@ def parse_song_row(song):
 		"num_scores": int(cells[4].get_text()),
 	}
 
-def get_pack(id_):
-	soup = util.parse_html(util.get(f"pack/{id_}").content)
+def get_pack(packid):
+	soup = util.parse_html(util.get(f"pack/{packid}").content)
 	
 	song_row_iterator = soup.find("tbody").find_all("tr")[1:]
 	
 	return [parse_song_row(s) for s in song_row_iterator]
+
+def parse_song_score(score):
+	songscorekey = extract_str(score["score"], "view/", '"')
+	return {
+		"scorekey": songscorekey[:-4],
+		"songid": songscorekey[:-4:]
+		# TODO:
+		# ~ "score": 
+		# ~ "nerf": 
+		# ~ "username": 
+		# ~ "rate": 
+		# ~ "wifescore": 
+		# ~ "date": 
+		# ~ "judgements": 
+		# ~ "combo": 
+	}
+
+def get_song_scores(chartkey):
+	response = util.post("score/chartOverallScores", {
+		# ~ "order[0][column]": 2,
+		# ~ "order[0][dir]": "desc",
+		# ~ "search[value]": "",
+		# ~ "search[regex]": "false",
+		"draw": 1,
+		"chartkey": chartkey,
+		# ~ "start": 0,
+		# ~ "length": -1,
+		# ~ "top": "false",
+	})
+	
+	data = response.json()["data"]
+	return [parse_song_score(r) for r in data]
 
 # Finds the chartkey of a given id by downloading the song's html page
 # and extracting the chartkey from there.
@@ -135,6 +166,29 @@ def get_chartkeys(songid):
 	chartkeys = util.extract_strs(html, '"data":{"chartkey": "', '"')
 	chartkeys = list(dict.fromkeys(chartkeys)) # Remove duplicates
 	return chartkeys
+
+# Returns mapping (dict) from scorekey -> chartkey
+def find_matching_diffs(songid, scorekeys):
+	# Zero initialize mapping
+	mapping = {scorekey: None for scorekey in scorekeys}
+	
+	chartkeys = get_chartkeys(songid)
+	
+	for chartkey in get_chartkeys(songid):
+		for score in get_song_scores(chartkey):
+			for scorekey in scorekeys:
+				# ~ print(f"Comparing '{score['scorekey']}' and '{scorekey}'")
+				if score["scorekey"] == scorekey:
+					mapping[scorekey] = chartkey
+					
+					# If every scorekey is done mapped, return
+					if not any(mapping[key] is None for key in scorekeys):
+						return mapping
+	
+	msg = "Could not find "
+	msg += ", ".join([key for key in scorekeys if mapping[key] is None])
+	msg += f" in {songid}."
+	raise Exception(msg)
 
 def get_packs(songid):
 	html = util.parse_html(util.get(f"song/view/{songid}").content)
