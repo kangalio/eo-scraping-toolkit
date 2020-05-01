@@ -175,9 +175,10 @@ def find_matching_diffs(songid, scorekeys):
 	chartkeys = get_chartkeys(songid)
 	
 	for chartkey in get_chartkeys(songid):
+		print(f"Searching chartkey {chartkey}")
 		for score in get_song_scores(chartkey):
 			for scorekey in scorekeys:
-				# ~ print(f"Comparing '{score['scorekey']}' and '{scorekey}'")
+				print(f"Comparing '{score['scorekey']}' and '{scorekey}'")
 				if score["scorekey"] == scorekey:
 					mapping[scorekey] = chartkey
 					
@@ -241,6 +242,8 @@ def parse_score(score):
 		"scorekey": score["scorekey"],
 	}
 
-def get_scores(userid):
-	response = util.post(f"score/userScores", data={"userid": userid})
+# if force_refresh parameter is set, the song list will be redownloaded to prevent missing scores
+# that weren't present when this function result was last cached.
+def get_scores(userid, force_refresh=False):
+	response = util.post(f"score/userScores", data={"userid": userid}, cache=not force_refresh)
 	return [parse_score(score) for score in response.json()["data"]]

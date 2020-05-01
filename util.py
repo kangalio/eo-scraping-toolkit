@@ -141,7 +141,6 @@ def format_datetime(date):
 def parse_datetime(date_str):
 	return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
 
-@memory.cache
 def post_inner(url, data):
 	rate_limit()
 	url = "https://etternaonline.com/" + url
@@ -149,7 +148,17 @@ def post_inner(url, data):
 	response.raise_for_status()
 	return response
 
+
+# Currently my hacky cache system works reasonably well, but when you force turn off cache with e.g
+# `get("example.got", cache=False)`, this cached result will be calculateed without touching the
+# cache system at all, i.e. in cache the old result will reside, even though it would be much more
+# sensible to update it with this new value. I dunno how to fix it tho because joblib.Memory has no
+# way to manually update its cache.
+
 @memory.cache
+def post_cached(*args, **kwargs):
+	return post_inner(*args, **kwargs)
+
 def get_inner(url):
 	rate_limit()
 	url = "https://etternaonline.com/" + url
@@ -157,5 +166,12 @@ def get_inner(url):
 	response.raise_for_status()
 	return response
 
-def get(url): return get_inner(url)
-def post(url, data): return post_inner(url, data)
+@memory.cache
+def get_cached(*args, **kwargs):
+	return get_inner(*args, **kwargs)
+
+def get(url, cache=True):
+	return get_cached(url) if cache else get_inner(url)
+
+def post(url, data, cache=True):
+	return post_cached(url, data) if cache else post_inner(url, data)
